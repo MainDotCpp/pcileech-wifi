@@ -1,0 +1,45 @@
+
+==========================================
+ PCILeech 固件定制指引
+==========================================
+
+=== 步骤 1: 替换 COE 文件 ===
+
+  cp /Users/yy/2_Areas/pcileech-wifi/pcileech_cfgspace.coe ip/pcileech_cfgspace.coe
+  cp /Users/yy/2_Areas/pcileech-wifi/pcileech_cfgspace.coe ip/100t/pcileech_cfgspace.coe
+  cp /Users/yy/2_Areas/pcileech-wifi/pcileech_cfgspace_writemask.coe ip/pcileech_cfgspace_writemask.coe
+  cp /Users/yy/2_Areas/pcileech-wifi/pcileech_cfgspace_writemask.coe ip/100t/pcileech_cfgspace_writemask.coe
+
+=== 步骤 2: 修改 Vivado PCIe IP 核 ===
+
+  在 Vivado 中打开 ip/pcie_7x_0.xci，修改:
+    Vendor ID:           0x10EC
+    Device ID:           0x8168
+    Revision ID:         0x0C
+    Subsystem Vendor ID: 0x1458
+    Subsystem Device ID: 0xE000
+    Class Code:          0x020000
+
+=== 步骤 3: 修改 src/pcileech_fifo.sv ===
+
+  第 216 行 _pcie_core_config 改为:
+    reg [79:0] _pcie_core_config = { 4'hf, 1'b1, 1'b1, 1'b0, 1'b0, 8'h0c, 16'h8168, 16'h10ec, 16'he000, 16'h1458 };
+
+  第 282-286 行 RW 寄存器改为:
+    rw[143:128] <= 16'h1458;   // CFG_SUBSYS_VEND_ID
+    rw[159:144] <= 16'hE000;   // CFG_SUBSYS_ID
+    rw[175:160] <= 16'h10EC;       // CFG_VEND_ID
+    rw[191:176] <= 16'h8168;       // CFG_DEV_ID
+    rw[199:192] <= 8'h0C;        // CFG_REV_ID
+
+  第 290 行启用影子配置空间:
+    rw[203] <= 1'b0;    // CUSTOM CONFIGURATION SPACE ENABLED
+
+=== 步骤 4: 修改 src/pcileech_pcie_cfg_a7.sv ===
+
+  第 219 行 DSN 改为:
+    rw[127:64] <= 64'h01000000684CE000;
+
+=== 步骤 5: 构建 ===
+
+  根据你的板卡运行对应的 .bat 文件生成 Vivado 工程，然后综合构建。
